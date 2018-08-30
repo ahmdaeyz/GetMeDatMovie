@@ -48,7 +48,9 @@ var getCmd = &cobra.Command{
 		imdbClient:=&http.Client{
 			Timeout:time.Second*60,
 		}
-		b:=bitly2.New("3b9f54331154f15b052980bbcd812009746b4533")
+		//bitly token 
+		b:=bitly2.New("***********************")
+		//gets the first result from the query then handles it for the site url
 		results,err:=imdb.SearchTitle(imdbClient,strings.Join(args," "))
 		if err!=nil{
 			log.Fatal(err)
@@ -82,7 +84,9 @@ func GetJson(apicall string,movieName string) string{
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.75 Safari/537.36")
 	req.Header.Set("Referer","https://egy.best/movie/"+movieName+"/")
-	req.Header.Set("Cookie","__cfduid=d0e60ae5885c4cab4d4ea0679036fda321535226127; PSSID=80u45JciUr6YD7mBNDc3k9UE0JJeBgiv5UbLJpvzfFrVaBMOWEinrFfrTnBtgTH5bO5YriiG4x5F6--COFPT53; _ga=GA1.2.1978196420.1535226077; _gid=GA1.2.1079465582.1535226077; __test; JS_TIMEZONE_OFFSET=-10800; 494668b4c0ef4d25bda4e75c27de2817=1b9c99d8-c3ec-4cf1-bb7d-01e9a962fcc3:2:2; adcashufpv3=131842452215161033441756794336; ppu_main_edd345426cf699c97a2fbda6dee85a60=1; EGUserDef=1122600%7C203b1b642b33933b83db3652111d7b93%7C812107a88d681c01b556f2404b64f2bb; noprpkedvhozafiwrcnt=1; noprpkedvhozafiwrexp=Tue, 28 Aug 2019 22:52:27 GMT; _gat_gtag_UA_9923694_2=1; ppu_sub_edd345426cf699c97a2fbda6dee85a60=2; ppu_delay_edd345426cf699c97a2fbda6dee85a60=1")
+	//you need a cookie with ur account in the site credentials to perform requests
+	//can be got by using the front-end once
+	req.Header.Set("Cookie","*********")
 	res, getErr := spaceClient.Do(req)
 	if getErr != nil {
 		log.Fatal(getErr)
@@ -101,7 +105,6 @@ func GetMovieLinks(url string) []string{
 	c:=colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.75 Safari/537.36"),
 	)
-	//c.SetProxy("//185.206.125.38:80")
 	//getting apicalls to qualities
 	c.OnHTML("table.dls_table.btns.full.mgb tbody tr td.tar a.btn.g.dl.show_dl.api", func(element *colly.HTMLElement) {
 		apiCalls=append(apiCalls,element.Attr("data-call"))
@@ -109,6 +112,7 @@ func GetMovieLinks(url string) []string{
 	//getting qualities' names
 	c.OnHTML("table.dls_table.btns.full.mgb tbody tr td", func(element *colly.HTMLElement) {
 		if strings.Contains(element.Text,"p") {
+			//720[p],1080[p]
 			qualities = append(qualities, strings.Replace(strings.Replace(element.Text, "تحميل من EgyBest", "", -1), "  ", "", -1))
 		}
 	})
@@ -123,5 +127,6 @@ func GetMovieLinks(url string) []string{
 			return movieName
 		}(url)))
 	}
+	//the anonymous function takes the movie url on the site and extracts the name from it as the referer header needs it
 	return downloadLinks
 }
