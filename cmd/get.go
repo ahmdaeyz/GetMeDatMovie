@@ -46,7 +46,6 @@ var getCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		//quality,_:=cmd.Flags().GetString("quality")
 		//TODO make getMovieLinks a map to get qualities easily
-		//TODO handle commas and dots
 		imdbClient := &http.Client{
 			Timeout: time.Second * 60,
 		}
