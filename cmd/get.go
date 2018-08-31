@@ -56,7 +56,16 @@ var getCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		if len(results) != 0 {
-			movieName := strings.Replace(strings.Replace(strings.ToLower(results[0].Name), " ", "-", -1), ":", "", -1) + "-" + strconv.Itoa(results[0].Year)
+			movieName := strings.ToLower(results[0].Name)
+			for _, letter := range movieName {
+				if !(letter >= 97 && letter <= 122) && strings.Index(movieName, string(letter)) != len(movieName)-1 {
+					movieName = strings.Replace(movieName, string(letter), "-", -1)
+				} else if !(letter >= 97 && letter <= 122) && strings.Index(movieName, string(letter)) == len(movieName)-1 {
+					movieName = strings.Replace(movieName, string(letter), "", -1)
+				}
+				movieName = strings.Replace(movieName, "--", "-", -1)
+			}
+			movieName += "-" + strconv.Itoa(results[0].Year)
 			for i, link := range GetMovieLinks("https://egy.best/movie/" + movieName + "/") {
 				fmt.Println(movieQualities[i].quality, ":")
 				shrt, _ := b.Links.Shorten(link)
