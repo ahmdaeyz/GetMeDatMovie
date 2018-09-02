@@ -52,8 +52,8 @@ var getCmd = &cobra.Command{
 		//TODO make getMovieLinks a map to get qualities easily
 		b := bitly2.New(BitlyAccessToken)
 		query := QuerySite(strings.Join(args, " "))
-		movieLinks := GetMovieLinks("https://egy.best/" + query.Movies[0].URL + "/")
-		if len(movieLinks) != 0 {
+		if len(query.Movies) != 0 {
+			movieLinks := GetMovieLinks("https://egy.best/" + query.Movies[0].URL + "/")
 			for i, link := range movieLinks {
 				fmt.Println(movieQualities[i].quality, ":")
 				shrt, _ := b.Links.Shorten(link)
