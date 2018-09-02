@@ -17,15 +17,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/StalkR/imdb"
-	"github.com/ahmdaeyz/go-omdb"
 	"github.com/gocolly/colly"
 	"github.com/spf13/cobra"
 	bitly2 "github.com/zpnk/go-bitly"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -37,6 +34,12 @@ type MovieQuality struct {
 	quality string
 	apicall string
 }
+type Query struct {
+	Movies []struct {
+		Title string `json:"t"`
+		URL   string `json:"u"`
+	} `json:"results"`
+}
 
 var movieQualities []MovieQuality
 
@@ -47,19 +50,9 @@ var getCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		//quality,_:=cmd.Flags().GetString("quality")
 		//TODO make getMovieLinks a map to get qualities easily
-		//this method falls short when querying for non-english Movies
-		//like spanish it returns the original title
-		//not the displayed one which is used by egy.best
-		//omdb api can be used to workaround that
-		imdbClient := &http.Client{
-			Timeout: time.Second * 60,
-		}
 		b := bitly2.New(BitlyAccessToken)
-		results, err := imdb.SearchTitle(imdbClient, strings.Join(args, " "))
-		if err != nil {
-			log.Fatal(err)
-		}
-		movieLinks := GetMovieLinks("https://egy.best/movie/" + HandleMovieTitle(results[0].Name, results[0].Year) + "/")
+		query := QuerySite(strings.Join(args, " "))
+		movieLinks := GetMovieLinks("https://egy.best/" + query.Movies[0].URL + "/")
 		if len(movieLinks) != 0 {
 			for i, link := range movieLinks {
 				fmt.Println(movieQualities[i].quality, ":")
@@ -67,29 +60,14 @@ var getCmd = &cobra.Command{
 				fmt.Println(shrt.URL)
 			}
 			fmt.Println("Have fun!!")
-		} else if len(movieLinks) == 0 && len(results) != 0 {
-			queryResult, _ := omdb.SearchByTitle(strings.Join(args, " "), OmdbAPiKey)
-			if queryResult.Response == "True" {
-				year, _ := strconv.Atoi(queryResult.Year)
-				movieLinks2 := GetMovieLinks("https://egy.best/movie/" + HandleMovieTitle(queryResult.Title, year) + "/")
-				if len(movieLinks2) > 0 {
-					for i, link := range movieLinks {
-						fmt.Println(movieQualities[i].quality, ":")
-						shrt, _ := b.Links.Shorten(link)
-						fmt.Println(shrt.URL)
-					}
-					fmt.Println("Have fun!!")
-				} else {
-					fmt.Println("Couldn't find that title!!")
-				}
-			} else {
-				fmt.Println("Try another Time")
-			}
+		} else {
+			fmt.Println("couldn't find", strings.Join(args, " "))
 		}
 	},
 }
 
 func init() {
+	//Not yet Implemented
 	getCmd.Flags().StringP("quality", "q", "available", "Specify movie quality")
 	rootCmd.AddCommand(getCmd)
 }
@@ -123,7 +101,6 @@ func GetMovieLinks(url string) []string {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.75 Safari/537.36"),
 	)
-	//c.SetProxy("//185.206.125.38:80")
 	//getting apicalls to qualities
 	c.OnHTML("table.dls_table.btns.full.mgb tbody tr td.tar a.btn.g.dl.show_dl.api", func(element *colly.HTMLElement) {
 		apiCalls = append(apiCalls, element.Attr("data-call"))
@@ -147,16 +124,38 @@ func GetMovieLinks(url string) []string {
 	}
 	return downloadLinks
 }
-func HandleMovieTitle(title string, year int) string {
-	movieName := strings.ToLower(title)
-	for _, letter := range movieName {
-		if !(letter >= 97 && letter <= 122) && strings.Index(movieName, string(letter)) != len(movieName)-1 {
-			movieName = strings.Replace(movieName, string(letter), "-", -1)
-		} else if !(letter >= 97 && letter <= 122) && strings.Index(movieName, string(letter)) == len(movieName)-1 {
-			movieName = strings.Replace(movieName, string(letter), "", -1)
-		}
-		movieName = strings.Replace(movieName, "--", "-", -1)
+
+func QuerySite(searchTerm string) *Query {
+	client := http.Client{
+		Timeout: 160 * time.Second,
 	}
-	movieName += "-" + strconv.Itoa(year)
-	return movieName
+	req, err := http.NewRequest(http.MethodGet, "https://egy.best/autoComplete.php?q="+searchTerm, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	body, _ := ioutil.ReadAll(res.Body)
+	str := string(body)
+	str = strings.Replace(str, str[:strings.Index(str, "[")], "{\"results\":", -1)
+	query := new(Query)
+	json.Unmarshal([]byte(str), query)
+	return query
+}
+
+func IsArabicMovie(searchTerm string) bool {
+	var isArabic bool
+	letters := []string{"ي", "و", "ه", "ن", "م", "ل", "ك", "ق", "ف", "غ", "ع", "ظ", "ط", "ض", "ص", "ش", "س", "ز", "ر", "ذ", "د", "خ", "ح", "ج", "ث", "ت", "ب", "ا"}
+	for _, letter := range letters {
+		if strings.Contains(searchTerm, letter) {
+			isArabic = true
+			break
+		}
+	}
+	return isArabic
 }
