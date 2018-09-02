@@ -39,7 +39,6 @@ _____   |  |__   _____   __| _/_____     ____  ___.__.________
 
 GetMeDatMovie get <Movie Link>
 `,
-
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

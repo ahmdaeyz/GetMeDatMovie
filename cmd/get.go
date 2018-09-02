@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/StalkR/imdb"
+	"github.com/ahmdaeyz/go-omdb"
 	"github.com/gocolly/colly"
 	"github.com/spf13/cobra"
 	bitly2 "github.com/zpnk/go-bitly"
@@ -46,6 +47,10 @@ var getCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		//quality,_:=cmd.Flags().GetString("quality")
 		//TODO make getMovieLinks a map to get qualities easily
+		//this method falls short when querying for non-english Movies
+		//like spanish it returns the original title
+		//not the displayed one which is used by egy.best
+		//omdb api can be used to workaround that
 		imdbClient := &http.Client{
 			Timeout: time.Second * 60,
 		}
@@ -54,25 +59,32 @@ var getCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		if len(results) != 0 {
-			movieName := strings.ToLower(results[0].Name)
-			for _, letter := range movieName {
-				if !(letter >= 97 && letter <= 122) && strings.Index(movieName, string(letter)) != len(movieName)-1 {
-					movieName = strings.Replace(movieName, string(letter), "-", -1)
-				} else if !(letter >= 97 && letter <= 122) && strings.Index(movieName, string(letter)) == len(movieName)-1 {
-					movieName = strings.Replace(movieName, string(letter), "", -1)
-				}
-				movieName = strings.Replace(movieName, "--", "-", -1)
-			}
-			movieName += "-" + strconv.Itoa(results[0].Year)
-			for i, link := range GetMovieLinks("https://egy.best/movie/" + movieName + "/") {
+		movieLinks := GetMovieLinks("https://egy.best/movie/" + HandleMovieTitle(results[0].Name, results[0].Year) + "/")
+		if len(movieLinks) != 0 {
+			for i, link := range movieLinks {
 				fmt.Println(movieQualities[i].quality, ":")
 				shrt, _ := b.Links.Shorten(link)
 				fmt.Println(shrt.URL)
 			}
 			fmt.Println("Have fun!!")
-		} else {
-			fmt.Println("Couldn't find this title!")
+		} else if len(movieLinks) == 0 && len(results) != 0 {
+			queryResult, _ := omdb.SearchByTitle(strings.Join(args, " "), OmdbAPiKey)
+			if queryResult.Response == "True" {
+				year, _ := strconv.Atoi(queryResult.Year)
+				movieLinks2 := GetMovieLinks("https://egy.best/movie/" + HandleMovieTitle(queryResult.Title, year) + "/")
+				if len(movieLinks2) > 0 {
+					for i, link := range movieLinks {
+						fmt.Println(movieQualities[i].quality, ":")
+						shrt, _ := b.Links.Shorten(link)
+						fmt.Println(shrt.URL)
+					}
+					fmt.Println("Have fun!!")
+				} else {
+					fmt.Println("Couldn't find that title!!")
+				}
+			} else {
+				fmt.Println("Try another Time")
+			}
 		}
 	},
 }
@@ -84,7 +96,7 @@ func init() {
 func GetJson(apicall string, movieName string) string {
 	urlobj := new(jsonurl)
 	spaceClient := http.Client{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * 120,
 	}
 	req, err := http.NewRequest(http.MethodGet, "https://egy.best/api?call="+apicall, nil)
 	if err != nil {
@@ -134,4 +146,17 @@ func GetMovieLinks(url string) []string {
 		}(url)))
 	}
 	return downloadLinks
+}
+func HandleMovieTitle(title string, year int) string {
+	movieName := strings.ToLower(title)
+	for _, letter := range movieName {
+		if !(letter >= 97 && letter <= 122) && strings.Index(movieName, string(letter)) != len(movieName)-1 {
+			movieName = strings.Replace(movieName, string(letter), "-", -1)
+		} else if !(letter >= 97 && letter <= 122) && strings.Index(movieName, string(letter)) == len(movieName)-1 {
+			movieName = strings.Replace(movieName, string(letter), "", -1)
+		}
+		movieName = strings.Replace(movieName, "--", "-", -1)
+	}
+	movieName += "-" + strconv.Itoa(year)
+	return movieName
 }
