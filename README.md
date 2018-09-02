@@ -7,7 +7,6 @@ it is pretty simple :
 > GetMeDatMovie get \<title of the movie\>
 ### [Remarks]
 ##### *try using search keywords close to the movie name for accurate results
-##### *i used imdb's [API](https://github.com/StalkR/imdb) for better searching 
 ##### *replace the SiteCookie with ur credentials' cookie from [the site](https://egy.best/).
 ##### *replace the BitlyAccessToken with ur access token from [bitly](https://bitly.com).
 ##### *for linux so u can download use [axel](https://github.com/axel-download-accelerator/axel) as wget doesn't work.
