@@ -1,4 +1,5 @@
 ## GetMeDatMovie
+### SITE IS NOW DOWN
 #### USE the command line to bypass [egybest](https://egy.best/) ads and get your desired movie quality !!
 #### if you have go installed in your machine grab the tool with :
 >go get github.com/ahmdaeyz/GetMeDatMovie
